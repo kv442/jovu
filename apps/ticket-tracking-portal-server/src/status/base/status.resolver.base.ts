@@ -13,16 +13,31 @@ import * as graphql from "@nestjs/graphql";
 import { GraphQLError } from "graphql";
 import { isRecordNotFoundError } from "../../prisma.util";
 import { MetaQueryPayload } from "../../util/MetaQueryPayload";
+import * as nestAccessControl from "nest-access-control";
+import * as gqlACGuard from "../../auth/gqlAC.guard";
+import { GqlDefaultAuthGuard } from "../../auth/gqlDefaultAuth.guard";
+import * as common from "@nestjs/common";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { Status } from "./Status";
 import { StatusCountArgs } from "./StatusCountArgs";
 import { StatusFindManyArgs } from "./StatusFindManyArgs";
 import { StatusFindUniqueArgs } from "./StatusFindUniqueArgs";
 import { DeleteStatusArgs } from "./DeleteStatusArgs";
 import { StatusService } from "../status.service";
+@common.UseGuards(GqlDefaultAuthGuard, gqlACGuard.GqlACGuard)
 @graphql.Resolver(() => Status)
 export class StatusResolverBase {
-  constructor(protected readonly service: StatusService) {}
+  constructor(
+    protected readonly service: StatusService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
 
+  @graphql.Query(() => MetaQueryPayload)
+  @nestAccessControl.UseRoles({
+    resource: "Status",
+    action: "read",
+    possession: "any",
+  })
   async _statusesMeta(
     @graphql.Args() args: StatusCountArgs
   ): Promise<MetaQueryPayload> {
@@ -32,12 +47,24 @@ export class StatusResolverBase {
     };
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @graphql.Query(() => [Status])
+  @nestAccessControl.UseRoles({
+    resource: "Status",
+    action: "read",
+    possession: "any",
+  })
   async statuses(@graphql.Args() args: StatusFindManyArgs): Promise<Status[]> {
     return this.service.statuses(args);
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @graphql.Query(() => Status, { nullable: true })
+  @nestAccessControl.UseRoles({
+    resource: "Status",
+    action: "read",
+    possession: "own",
+  })
   async status(
     @graphql.Args() args: StatusFindUniqueArgs
   ): Promise<Status | null> {
@@ -49,6 +76,11 @@ export class StatusResolverBase {
   }
 
   @graphql.Mutation(() => Status)
+  @nestAccessControl.UseRoles({
+    resource: "Status",
+    action: "delete",
+    possession: "any",
+  })
   async deleteStatus(
     @graphql.Args() args: DeleteStatusArgs
   ): Promise<Status | null> {

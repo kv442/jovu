@@ -16,7 +16,11 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { PriorityService } from "../priority.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { PriorityCreateInput } from "./PriorityCreateInput";
 import { Priority } from "./Priority";
 import { PriorityFindManyArgs } from "./PriorityFindManyArgs";
@@ -26,10 +30,24 @@ import { TicketFindManyArgs } from "../../ticket/base/TicketFindManyArgs";
 import { Ticket } from "../../ticket/base/Ticket";
 import { TicketWhereUniqueInput } from "../../ticket/base/TicketWhereUniqueInput";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class PriorityControllerBase {
-  constructor(protected readonly service: PriorityService) {}
+  constructor(
+    protected readonly service: PriorityService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Priority })
+  @nestAccessControl.UseRoles({
+    resource: "Priority",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createPriority(
     @common.Body() data: PriorityCreateInput
   ): Promise<Priority> {
@@ -43,9 +61,18 @@ export class PriorityControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Priority] })
   @ApiNestedQuery(PriorityFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Priority",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async priorities(@common.Req() request: Request): Promise<Priority[]> {
     const args = plainToClass(PriorityFindManyArgs, request.query);
     return this.service.priorities({
@@ -58,9 +85,18 @@ export class PriorityControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Priority })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Priority",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async priority(
     @common.Param() params: PriorityWhereUniqueInput
   ): Promise<Priority | null> {
@@ -80,9 +116,18 @@ export class PriorityControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Priority })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Priority",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updatePriority(
     @common.Param() params: PriorityWhereUniqueInput,
     @common.Body() data: PriorityUpdateInput
@@ -110,6 +155,14 @@ export class PriorityControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Priority })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Priority",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deletePriority(
     @common.Param() params: PriorityWhereUniqueInput
   ): Promise<Priority | null> {
@@ -132,8 +185,14 @@ export class PriorityControllerBase {
     }
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id/tickets")
   @ApiNestedQuery(TicketFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Ticket",
+    action: "read",
+    possession: "any",
+  })
   async findTickets(
     @common.Req() request: Request,
     @common.Param() params: PriorityWhereUniqueInput
@@ -177,6 +236,11 @@ export class PriorityControllerBase {
   }
 
   @common.Post("/:id/tickets")
+  @nestAccessControl.UseRoles({
+    resource: "Priority",
+    action: "update",
+    possession: "any",
+  })
   async connectTickets(
     @common.Param() params: PriorityWhereUniqueInput,
     @common.Body() body: TicketWhereUniqueInput[]
@@ -194,6 +258,11 @@ export class PriorityControllerBase {
   }
 
   @common.Patch("/:id/tickets")
+  @nestAccessControl.UseRoles({
+    resource: "Priority",
+    action: "update",
+    possession: "any",
+  })
   async updateTickets(
     @common.Param() params: PriorityWhereUniqueInput,
     @common.Body() body: TicketWhereUniqueInput[]
@@ -211,6 +280,11 @@ export class PriorityControllerBase {
   }
 
   @common.Delete("/:id/tickets")
+  @nestAccessControl.UseRoles({
+    resource: "Priority",
+    action: "update",
+    possession: "any",
+  })
   async disconnectTickets(
     @common.Param() params: PriorityWhereUniqueInput,
     @common.Body() body: TicketWhereUniqueInput[]

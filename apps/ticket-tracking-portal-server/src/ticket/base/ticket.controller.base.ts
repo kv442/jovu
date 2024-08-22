@@ -16,17 +16,35 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { TicketService } from "../ticket.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { TicketCreateInput } from "./TicketCreateInput";
 import { Ticket } from "./Ticket";
 import { TicketFindManyArgs } from "./TicketFindManyArgs";
 import { TicketWhereUniqueInput } from "./TicketWhereUniqueInput";
 import { TicketUpdateInput } from "./TicketUpdateInput";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class TicketControllerBase {
-  constructor(protected readonly service: TicketService) {}
+  constructor(
+    protected readonly service: TicketService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Ticket })
+  @nestAccessControl.UseRoles({
+    resource: "Ticket",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createTicket(@common.Body() data: TicketCreateInput): Promise<Ticket> {
     return await this.service.createTicket({
       data: {
@@ -73,9 +91,18 @@ export class TicketControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Ticket] })
   @ApiNestedQuery(TicketFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Ticket",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async tickets(@common.Req() request: Request): Promise<Ticket[]> {
     const args = plainToClass(TicketFindManyArgs, request.query);
     return this.service.tickets({
@@ -109,9 +136,18 @@ export class TicketControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Ticket })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Ticket",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async ticket(
     @common.Param() params: TicketWhereUniqueInput
   ): Promise<Ticket | null> {
@@ -152,9 +188,18 @@ export class TicketControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Ticket })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Ticket",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updateTicket(
     @common.Param() params: TicketWhereUniqueInput,
     @common.Body() data: TicketUpdateInput
@@ -217,6 +262,14 @@ export class TicketControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Ticket })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Ticket",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deleteTicket(
     @common.Param() params: TicketWhereUniqueInput
   ): Promise<Ticket | null> {
