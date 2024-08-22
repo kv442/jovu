@@ -1,0 +1,57 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Ticket {
+  assigned     String?
+  comment      Comment?  @relation(fields: [commentId], references: [id])
+  commentId    String?
+  createdAt    DateTime  @default(now())
+  createdDate  DateTime?
+  id           String    @id @default(cuid())
+  priority     Priority? @relation(fields: [priorityId], references: [id])
+  priorityId   String?
+  program      String?
+  resource     String?
+  state        String?
+  subject      String?
+  ticketNumber String?
+  updatedAt    DateTime  @updatedAt
+}
+
+model Status {
+  createdAt DateTime @default(now())
+  id        String   @id @default(cuid())
+  updatedAt DateTime @updatedAt
+}
+
+model Priority {
+  createdAt DateTime @default(now())
+  id        String   @id @default(cuid())
+  tickets   Ticket[]
+  updatedAt DateTime @updatedAt
+}
+
+model Comment {
+  createdAt DateTime @default(now())
+  id        String   @id @default(cuid())
+  tickets   Ticket[]
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  createdAt DateTime @default(now())
+  email     String?  @unique
+  firstName String?
+  id        String   @id @default(cuid())
+  lastName  String?
+  password  String
+  roles     Json
+  updatedAt DateTime @updatedAt
+  username  String   @unique
+}
